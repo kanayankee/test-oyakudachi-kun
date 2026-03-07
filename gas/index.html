@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: "#FAFAFA",
+                        foreground: "#333333",
+                        primary: "#38BDF8",
+                        primaryLight: "#F0F9FF",
+                        accent: "#F472B6",
+                        accentLight: "#FDF2F8",
+                        pop: "#FBBF24",
+                        popLight: "#FFFBEB",
+                        success: "#34D399",
+                    },
+                    boxShadow: {
+                        soft: "0 4px 15px rgba(56,189,248,0.1)"
+                    },
+                    borderRadius: {
+                        xl: "1rem",
+                        "2xl": "1.5rem"
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-background text-foreground p-4 sm:p-6">
+    <div class="max-w-lg mx-auto bg-white rounded-2xl shadow-soft border border-primaryLight overflow-hidden">
+        <div class="bg-primary px-5 py-4">
+            <h2 class="text-lg font-black text-white text-center">📤 過去問アップロード</h2>
+        </div>
+
+        <form id="uploadForm" onsubmit="handleFormSubmit(event)" class="flex flex-col gap-5 p-5">
+            <input type="hidden" name="grade" value="<?= grade ?>">
+            <input type="hidden" name="subject" value="<?= subject ?>">
+
+            <div class="flex gap-3">
+                <div class="flex flex-col gap-1 w-1/2">
+                    <label class="font-bold text-sm text-foreground">科目名</label>
+                    <input type="text" value="<?= subject ?>" readonly class="bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-500 cursor-not-allowed">
+                </div>
+                <div class="flex flex-col gap-1 w-1/2">
+                    <label class="font-bold text-sm text-foreground">教員名</label>
+                    <? if (teacher && teacher !== '追加') { ?>
+                    <input type="text" name="teacher" value="<?= teacher ?>" readonly class="bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-500 cursor-not-allowed">
+                    <? } else { ?>
+                    <textarea name="teacherInput" placeholder="苗字のみ（複数の場合は改行）" required class="border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primaryLight focus:outline-none resize-none h-16"></textarea>
+                    <? } ?>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <div class="flex flex-col gap-1 w-1/2">
+                    <label class="font-bold text-sm text-foreground">年度</label>
+                    <select name="nendo" id="nendoInput" required class="border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primaryLight focus:outline-none">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1 w-1/2">
+                    <label class="font-bold text-sm text-foreground">テスト名</label>
+                    <input type="text" name="testId" value="<?= typeof testId !== 'undefined' ? testId : '' ?>" readonly class="bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-500 cursor-not-allowed">
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <label class="font-bold text-sm text-foreground">種別</label>
+                <input type="text" name="type" value="<?= typeof type !== 'undefined' ? type : '' ?>" readonly class="bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-500 cursor-not-allowed">
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label class="font-bold text-sm text-foreground">アップロード形式</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2 text-sm cursor-pointer font-medium">
+                        <input type="radio" name="uploadMode" value="pdf" checked onchange="toggleFileMode()" class="accent-primary">
+                        PDFファイル
+                    </label>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer font-medium">
+                        <input type="radio" name="uploadMode" value="image" onchange="toggleFileMode()" class="accent-primary">
+                        画像ファイル
+                    </label>
+                </div>
+            </div>
+
+            <div id="pdfInputContainer" class="flex flex-col gap-2">
+                <label class="font-bold text-sm text-foreground">PDFファイルを選択</label>
+                <input type="file" name="pdfFile" accept="application/pdf" class="text-sm file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-primary file:text-white hover:file:bg-primary/80 focus:outline-none">
+                <p class="text-xs text-zinc-400 font-medium">💡なるべく消しゴムを使う努力をしてほしいです</p>
+            </div>
+
+            <div id="imageInputContainer" class="flex flex-col gap-2 hidden">
+                <label class="font-bold text-sm text-foreground">画像ファイルを選択（複数可）</label>
+                <input type="file" name="imageFiles" accept="image/*" multiple class="text-sm file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-primary file:text-white hover:file:bg-primary/80 focus:outline-none">
+                <p class="text-xs text-zinc-400 font-medium">💡画像の場合はトリミングしてあげると優しい。なるべく消しゴムを使う努力をしてほしいです。<br />画像のアップロードはPDFアップロードに比べて大幅に時間を要します。ロイロノート等でPDF化してからアップロードするのがおすすめです。</p>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-primary text-white font-black py-3 rounded-2xl hover:bg-primary/90 transition-colors shadow-soft text-base">
+                アップロードを開始
+            </button>
+
+            <div id="statusMsg" class="text-center text-sm font-bold hidden rounded-xl p-3"></div>
+        </form>
+    </div>
+
+    <script>
+        function toggleFileMode() {
+            const mode = document.querySelector('input[name="uploadMode"]:checked').value;
+            const pdfContainer = document.getElementById('pdfInputContainer');
+            const imgContainer = document.getElementById('imageInputContainer');
+            const pdfInput = document.querySelector('input[name="pdfFile"]');
+            const imgInput = document.querySelector('input[name="imageFiles"]');
+
+            if (mode === 'pdf') {
+                pdfContainer.classList.remove('hidden');
+                imgContainer.classList.add('hidden');
+                pdfInput.required = true;
+                imgInput.required = false;
+                imgInput.value = '';
+            } else {
+                pdfContainer.classList.add('hidden');
+                imgContainer.classList.remove('hidden');
+                imgInput.required = true;
+                pdfInput.required = false;
+                pdfInput.value = '';
+            }
+        }
+
+        toggleFileMode();
+
+        // 年度の選択肢を生成
+        const currentYear = new Date().getFullYear();
+        const select = document.getElementById('nendoInput');
+        for (let y = currentYear; y >= 2010; y--) {
+            const option = document.createElement('option');
+            option.value = y.toString();
+            option.textContent = y + '年度';
+            select.appendChild(option);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const btn = document.getElementById('submitBtn');
+            const msg = document.getElementById('statusMsg');
+            const form = document.getElementById('uploadForm');
+            const mode = document.querySelector('input[name="uploadMode"]:checked').value;
+
+            btn.disabled = true;
+            btn.textContent = 'アップロード中... しばらくお待ち下さい';
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            msg.classList.add('hidden');
+
+            if (mode === 'image') {
+                // 複数画像をすべてBase64に変換してからGASへ送信
+                const imageInput = document.querySelector('input[name="imageFiles"]');
+                const files = imageInput.files;
+
+                if (!files || files.length === 0) {
+                    showError(btn, msg, '画像を選択してください');
+                    return;
+                }
+
+                const readPromises = Array.from(files).map(file => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve({
+                            base64: e.target.result.split(',')[1],
+                            mimeType: file.type,
+                            name: file.name
+                        });
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                });
+
+                Promise.all(readPromises).then(imageDataArray => {
+                    // teacher フィールドは固定値か入力値かどちらか取得
+                    const teacherFixed = form.querySelector('[name="teacher"]');
+                    const teacherInput = form.querySelector('[name="teacherInput"]');
+
+                    const formData = {
+                        grade: form.querySelector('[name="grade"]').value,
+                        nendo: form.querySelector('[name="nendo"]').value,
+                        testId: form.querySelector('[name="testId"]').value,
+                        subject: form.querySelector('[name="subject"]').value,
+                        teacher: teacherFixed ? teacherFixed.value : '',
+                        teacherInput: teacherInput ? teacherInput.value : '',
+                        type: form.querySelector('[name="type"]').value,
+                        uploadMode: 'image',
+                        imageDataArray: imageDataArray
+                    };
+
+                    google.script.run
+                        .withSuccessHandler(function (response) { handleSuccess(response, btn, msg, form); })
+                        .withFailureHandler(function (error) { handleFailure(error, btn, msg); })
+                        .processUpload(formData);
+                }).catch(function (err) {
+                    showError(btn, msg, '画像の読み込みに失敗しました: ' + err.message);
+                });
+
+            } else {
+                // PDF はそのままフォームオブジェクトで渡す
+                google.script.run
+                    .withSuccessHandler(function (response) { handleSuccess(response, btn, msg, form); })
+                    .withFailureHandler(function (error) { handleFailure(error, btn, msg); })
+                    .processUpload(form);
+            }
+        }
+
+        function handleSuccess(response, btn, msg, form) {
+            btn.disabled = false;
+            btn.textContent = 'アップロードを開始';
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            msg.classList.remove('hidden');
+
+            if (response.success) {
+                msg.classList.remove('bg-red-50', 'text-red-600');
+                msg.classList.add('bg-green-50', 'text-green-700');
+                msg.textContent = 'アップロードが完了しました。審査後に公開されます。';
+                form.reset();
+                toggleFileMode();
+            } else {
+                msg.classList.remove('bg-green-50', 'text-green-700');
+                msg.classList.add('bg-red-50', 'text-red-600');
+                msg.textContent = 'エラー: ' + response.error;
+            }
+        }
+
+        function handleFailure(error, btn, msg) {
+            btn.disabled = false;
+            btn.textContent = 'アップロードを開始';
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            msg.classList.remove('hidden', 'bg-green-50', 'text-green-700');
+            msg.classList.add('bg-red-50', 'text-red-600');
+            msg.textContent = '通信エラーが発生しました: ' + error.message;
+        }
+
+        function showError(btn, msg, text) {
+            btn.disabled = false;
+            btn.textContent = 'アップロードを開始';
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            msg.classList.remove('hidden', 'bg-green-50', 'text-green-700');
+            msg.classList.add('bg-red-50', 'text-red-600');
+            msg.textContent = text;
+        }
+    </script>
+</body>
+
+</html>
