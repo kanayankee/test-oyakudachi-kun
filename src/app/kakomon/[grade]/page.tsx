@@ -20,7 +20,10 @@ export default async function KakomonPage({
     const isBypassPeriod = (month === 3) || (month === 4 && day <= 20);
     const isMyGradeBypass = myGrade === "true" && isBypassPeriod;
 
-    const data = await getSpreadsheetData();
+    const [data] = await Promise.all([
+        getSpreadsheetData(),
+        new Promise(resolve => setTimeout(resolve, 1500))
+    ]);
 
     if (!data) return <div>Data not found</div>;
 
