@@ -26,6 +26,18 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
+  openGraph: {
+    title: "同志社高校 テストお役立ちくん",
+    description: "過去問や質問箱が利用できるサービス",
+    images: ["https://test-oyakudachi.vercel.app/ogp.png"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "同志社高校 テストお役立ちくん",
+    description: "過去問や質問箱が利用できるサービス",
+    images: ["https://test-oyakudachi.vercel.app/ogp.png"],
+  },
 };
 
 export default function RootLayout({
@@ -35,6 +47,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
+      <head>
+        <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <meta name="apple-mobile-web-app-title" content="お役立ちくん" />
+        <link rel="manifest" href="/site.webmanifest" />
+      </head>
       <body className={`${genJyuu.className} antialiased flex flex-col min-h-screen`}>
         <div className="flex-1 flex flex-col items-center w-full">
           <header className="w-full max-w-[1400px] px-4 md:px-8 py-4 flex justify-between items-center mt-4 bg-white/80 backdrop-blur-md rounded-xl shadow-soft sticky top-4 z-50">

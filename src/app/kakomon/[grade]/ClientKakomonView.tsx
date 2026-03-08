@@ -165,6 +165,9 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
             const json = await res.json();
             if (json.status === "success") {
                 setAddTeacherStatus("ok");
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             } else {
                 setAddTeacherStatus("error");
                 setAddTeacherError(json.message || "エラーが発生しました");
@@ -283,7 +286,7 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
                             )}
                             {addTeacherStatus === "ok" ? (
                                 <div className="text-center py-2">
-                                    <p className="text-success font-bold text-sm">✅ 追加しました！ページをリロードしてください。</p>
+                                    <p className="text-success font-bold text-sm">教員を追加しました。自動で再読み込みされます。</p>
                                 </div>
                             ) : (
                                 <button

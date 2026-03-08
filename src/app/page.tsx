@@ -11,7 +11,10 @@ export default async function Home() {
     { id: "3", label: "3年生用" },
   ];
 
-  const announcementsData = await getAnnouncementsData();
+  const [announcementsData] = await Promise.all([
+    getAnnouncementsData(),
+    new Promise(resolve => setTimeout(resolve, 1500))
+  ]);
   const announcements = announcementsData.map(row => ({
     date: row[0],
     title: row[1],
