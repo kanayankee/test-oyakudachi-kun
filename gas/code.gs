@@ -73,12 +73,17 @@ function processUpload(formObject) {
         var testId = formObject.testId;
         var subject = formObject.subject;
         var teacherStr = formObject.teacherInput || formObject.teacher;
-        // Replace newlines with commas for multiple teachers if any
-        var teacher = teacherStr.split('\n').join(',');
+        // Split by newlines or multiple spaces (including full-width) to detect multiple teachers
+        var teacherNames = teacherStr.split(/[\n\s　]+/).filter(function (name) { return name.trim() !== ''; });
+        var teacher = teacherNames.join(',');
+
+        // If multiple teachers, use "共通" for the file name
+        var teacherForName = teacherNames.length > 1 ? "共通" : teacher;
+
         var type = formObject.type; // 問題 or 解答
         var isImage = formObject.uploadMode === 'image';
 
-        var testName0 = grade + "_" + nendo + testId + "_" + subject + "_" + teacher;
+        var testName0 = grade + "_" + nendo + testId + "_" + subject + "_" + teacherForName;
         var finalName = testName0 + "_" + type;
 
         var folder = DriveApp.getFolderById(FOLDER_ID);

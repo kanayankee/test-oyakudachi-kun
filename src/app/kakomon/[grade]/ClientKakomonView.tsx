@@ -84,7 +84,7 @@ function TeacherAccordion({
                                                     </button>
                                                 ))}
                                                 <button
-                                                    onClick={() => onUploadClick(row.subjectAbbr, row.teacherName.replace(/\n/g, " "), tc.id, type)}
+                                                    onClick={() => onUploadClick(row.subjectAbbr, row.teacherName, tc.id, type)}
                                                     className="w-full text-[10px] font-bold px-2 py-1 bg-zinc-50 text-zinc-400 rounded-md border border-dashed border-zinc-200 hover:bg-primary-light hover:text-primary transition-colors"
                                                 >
                                                     + アップロード
