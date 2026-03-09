@@ -75,7 +75,7 @@ function processUpload(formObject) {
         var teacherStr = formObject.teacherInput || formObject.teacher;
         // Split by newlines or multiple spaces (including full-width) to detect multiple teachers
         var teacherNames = teacherStr.split(/[\n\s　]+/).filter(function (name) { return name.trim() !== ''; });
-        var teacher = teacherNames.join(',');
+        var teacher = teacherNames.join(' ');
 
         // If multiple teachers, use "共通" for the file name
         var teacherForName = teacherNames.length > 1 ? "共通" : teacher;
