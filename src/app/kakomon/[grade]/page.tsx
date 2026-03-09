@@ -55,11 +55,20 @@ export default async function KakomonPage({
             });
         });
 
-        const normalizedTeacherName = teacherName.split(/[\n\s　]+/).filter(Boolean).join(' ');
+        const currentTeacherNames = teacherName.split(/[\n\s　]+/).filter(Boolean);
         const tFiles = gradeFiles.filter(fRow => {
             const fileName = fRow[5] || "";
             const isMatchSubject = fileName.includes(`_${subjectAbbr}_`);
-            const isMatchTeacher = fRow[3] === normalizedTeacherName || fRow[3] === "共通";
+
+            const fileTeacherStr = fRow[3] || "";
+            if (fileTeacherStr === "共通") return isMatchSubject;
+
+            const fileTeacherNames = fileTeacherStr.split(/[\s,，]+/).filter(Boolean);
+
+            // Match if the sets of teachers are identical (regardless of order)
+            const isMatchTeacher = currentTeacherNames.length === fileTeacherNames.length &&
+                currentTeacherNames.every((name: string) => fileTeacherNames.includes(name));
+
             return isMatchSubject && isMatchTeacher;
         });
 

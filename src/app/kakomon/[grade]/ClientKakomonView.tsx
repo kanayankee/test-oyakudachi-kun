@@ -29,9 +29,7 @@ function TeacherAccordion({
         </button>
     ) : (
         <span>
-            {(row.teacherName ?? "").split("\n").map((line: string, i: number) => (
-                <span key={i} className="block">{line}</span>
-            ))}
+            {(row.teacherName ?? "").split("\n").filter(Boolean).join("・")}
         </span>
     );
 
