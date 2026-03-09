@@ -124,7 +124,7 @@ function processUpload(formObject) {
         }
 
         var adminEmail = PropertiesService.getScriptProperties().getProperty('KAKOMON_EMAIL');
-        var mailSubject = "【過去問アップロード】" + finalName;
+        var mailSubject = "過去問アップロード";
         var gid = "1548533520";
         var mailBody = "以下の過去問がアップロードされました。スプレッドシートで内容を確認し、チェックボックス（H列）をオンにしてください。\n\n" +
             "ファイル名: " + finalName + "\n" +
