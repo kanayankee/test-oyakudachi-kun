@@ -40,6 +40,10 @@ export const metadata: Metadata = {
   },
 };
 
+import { AuthProvider } from "@/components/AuthContext";
+import Header from "@/components/Header";
+import { SessionProvider } from "next-auth/react";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -56,20 +60,25 @@ export default function RootLayout({
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className={`${genJyuu.className} antialiased flex flex-col min-h-screen`}>
-        <div className="flex-1 flex flex-col items-center w-full">
-          <header className="w-full max-w-[1400px] px-4 md:px-8 py-4 flex justify-between items-center mt-4 bg-white/80 backdrop-blur-md rounded-xl shadow-soft sticky top-4 z-50">
-            <Link href="/" className="flex items-center gap-3">
-              <img src="/icon.png" alt="Logo" className="w-10 h-10 rounded-full" />
-              <h1 className="text-xl font-bold text-foreground">同志社高校 テストお役立ちくん</h1>
-            </Link>
-          </header>
-          <main className="flex-1 w-full max-w-[1400px] px-4 md:px-8 py-4 mt-6">
-            {children}
-          </main>
-        </div>
-        <footer className="w-full py-6 mt-12 border-t border-zinc-200 flex justify-center items-center bg-white/50 text-foreground text-sm">
-          ©︎ 2026 テストお役立ちくん All rights reserved.
-        </footer>
+        <SessionProvider>
+          <AuthProvider>
+            <div className="flex-1 flex flex-col items-center w-full">
+              <Header />
+              <main className="flex-1 w-full max-w-[1400px] px-4 md:px-8 py-4 mt-6">
+                {children}
+              </main>
+            </div>
+            <footer className="w-full py-8 mt-12 border-t border-zinc-200 flex flex-col items-center gap-4 bg-white/50 text-foreground text-sm">
+              <div className="flex gap-6">
+                <Link href="/termsofservice" className="text-zinc-500 hover:text-zinc-800 transition-colors">利用規約</Link>
+                <Link href="/privacystatement" className="text-zinc-500 hover:text-zinc-800 transition-colors">プライバシーポリシー</Link>
+              </div>
+              <div className="text-zinc-400 font-medium">
+                ©︎ 2026 テストお役立ちくん All rights reserved.
+              </div>
+            </footer>
+          </AuthProvider>
+        </SessionProvider>
       </body>
     </html>
   );

@@ -5,20 +5,10 @@ import ClientKakomonView from "./ClientKakomonView";
 
 export default async function KakomonPage({
     params,
-    searchParams
 }: {
     params: Promise<{ grade: string }>;
-    searchParams: Promise<{ myGrade?: string }>;
 }) {
     const { grade } = await params;
-    const { myGrade } = await searchParams;
-
-    // Check if within the bypass period (March 1st - April 20th)
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    const isBypassPeriod = (month === 3) || (month === 4 && day <= 20);
-    const isMyGradeBypass = myGrade === "true" && isBypassPeriod;
 
     const [data] = await Promise.all([
         getSpreadsheetData(),
@@ -72,6 +62,9 @@ export default async function KakomonPage({
             return isMatchSubject && isMatchTeacher;
         });
 
+        // Current Date in JST
+        const jstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+
         tFiles.forEach(f => {
             const year = f[1];
             const testId = f[2];
@@ -81,15 +74,16 @@ export default async function KakomonPage({
 
             if (cellData[`${testId}_${type}`]) {
                 const testInfo = testCols.find(tc => tc.id === testId) || { name: "", releaseDate: "2099/12/31" };
-                const isLocked = !isMyGradeBypass && new Date(testInfo.releaseDate) > new Date();
+                const releaseDate = new Date(testInfo.releaseDate);
+                const isLocked = jstNow < releaseDate;
 
                 cellData[`${testId}_${type}`].push({
                     year: `20${year}年度`,
                     fileName: fname,
                     fileId: fid,
-                    isLocked,
+                    releaseDate: testInfo.releaseDate,
+                    isLocked: isLocked,
                     isVerified: f[7] === "TRUE" || f[7] === true,
-                    releaseDate: testInfo.releaseDate
                 });
             }
         });
