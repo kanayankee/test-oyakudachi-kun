@@ -31,7 +31,7 @@ function doPost(e) {
             var answerLink = "https://docs.google.com/spreadsheets/d/" + SPREADSHEET_ID + "/edit?gid=24943130#gid=24943130&range=A" + targetRow;
 
             var body = "新しい質問が届きました。\n質問日時: " + dateStr + "\n質問内容:\n" + question + "\n\n回答する: " + answerLink;
-            GmailApp.sendEmail(emailTo, subject, body);
+            sendQuestionMail(body);
 
             return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
         }
@@ -123,13 +123,11 @@ function processUpload(formObject) {
             var insertedRow = recordToSpreadsheet(grade, nendo, testId, teacher, type, pdfFile.getName(), pdfFile.getId());
         }
 
-        var adminEmail = PropertiesService.getScriptProperties().getProperty('KAKOMON_EMAIL');
-        var mailSubject = "過去問アップロードのお知らせ";
         var gid = "1548533520";
         var mailBody = "以下の過去問がアップロードされました。スプレッドシートで内容を確認し、チェックボックス（H列）をオンにしてください。\n\n" +
             "ファイル名: " + finalName + "\n" +
             "URL: https://docs.google.com/spreadsheets/d/" + SPREADSHEET_ID + "/edit?gid=" + gid + "#gid=" + gid + "&range=A" + insertedRow;
-        GmailApp.sendEmail(adminEmail, mailSubject, mailBody);
+        sendKakomonMail(mailBody);
 
         return { success: true };
     } catch (e) {
@@ -211,5 +209,29 @@ function createPdfFromImagesWithTemplateSlides(imageFileIds, outputPdfName, dest
     } catch (error) {
         if (presentationId) DriveApp.getFileById(presentationId).setTrashed(true);
         return null;
+    }
+}
+
+function sendQuestionMail(body) {
+    var subject = "質問箱通知";
+    var emailTo = PropertiesService.getScriptProperties().getProperty('QA_EMAIL');
+    var threads = GmailApp.search('in:sent subject:"質問箱通知"');
+
+    if (threads.length > 0) {
+        threads[0].reply(body);
+    } else {
+        GmailApp.sendEmail(emailTo, subject, body);
+    }
+}
+
+function sendKakomonMail(body) {
+    var subject = "過去問アップロード通知";
+    var emailTo = PropertiesService.getScriptProperties().getProperty('KAKOMON_EMAIL');
+    var threads = GmailApp.search('in:sent subject:"過去問アップロード通知"');
+
+    if (threads.length > 0) {
+        threads[0].reply(body);
+    } else {
+        GmailApp.sendEmail(emailTo, subject, body);
     }
 }

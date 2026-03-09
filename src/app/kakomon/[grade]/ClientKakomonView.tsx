@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 function TeacherAccordion({
     row,
@@ -9,6 +9,7 @@ function TeacherAccordion({
     onUploadClick,
     onFileClick,
     onCommentClick,
+    isBypassActive,
 }: {
     row: any;
     testCols: any[];
@@ -16,6 +17,7 @@ function TeacherAccordion({
     onUploadClick: (abbr: string, teacher: string, testId?: string, type?: string) => void;
     onFileClick: (e: React.MouseEvent, file: any) => void;
     onCommentClick: (comment: string) => void;
+    isBypassActive: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const isTeacherAddition = row.teacherName?.includes("追加") ?? false;
@@ -69,18 +71,21 @@ function TeacherAccordion({
                                         return (
                                             <div key={type} className="p-3 flex flex-col gap-2">
                                                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">{type}</span>
-                                                {files.map((file: any, j: number) => (
-                                                    <button
-                                                        key={j}
-                                                        onClick={(e) => onFileClick(e, file)}
-                                                        className={`w-full text-xs font-bold px-2 py-1.5 rounded-lg border transition-all ${file.isLocked
-                                                            ? "bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed"
-                                                            : typeColor
-                                                            }`}
-                                                    >
-                                                        {file.year}
-                                                    </button>
-                                                ))}
+                                                {files.map((file: any, j: number) => {
+                                                    const isLockedUI = file.isLocked && !isBypassActive;
+                                                    return (
+                                                        <button
+                                                            key={j}
+                                                            onClick={(e) => onFileClick(e, file)}
+                                                            className={`w-full text-xs font-bold px-2 py-1.5 rounded-lg border transition-all ${isLockedUI
+                                                                ? "bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed"
+                                                                : typeColor
+                                                                }`}
+                                                        >
+                                                            {file.year}
+                                                        </button>
+                                                    );
+                                                })}
                                                 <button
                                                     onClick={() => onUploadClick(row.subjectAbbr, row.teacherName, tc.id, type)}
                                                     className="w-full text-[10px] font-bold px-2 py-1 bg-zinc-50 text-zinc-400 rounded-md border border-dashed border-zinc-200 hover:bg-primary-light hover:text-primary transition-colors"
@@ -100,7 +105,12 @@ function TeacherAccordion({
     );
 }
 
+import { useAuth } from "@/components/AuthContext";
+import { useRouter } from "next/navigation";
+
 export default function ClientKakomonView({ rows, testCols, grade }: { rows: any[]; testCols: any[]; grade: string }) {
+    const { user, userId, admissionYear, calculatedGrade, isLoading: isAuthLoading } = useAuth();
+    const router = useRouter();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalUrl, setModalUrl] = useState("");
     const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -114,7 +124,62 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
     const [addTeacherStatus, setAddTeacherStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
     const [addTeacherError, setAddTeacherError] = useState("");
 
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    // School year starts in April. 
+    // In March, it's still the previous school year.
+    const isBypassPeriod = (month === 3) || (month === 4 && day <= 20);
+    // Grade based on school year: e.g. Sync d21 as grade 4 in SY2025 (actually 3 but d21=2021)
+    // d21 joined in SY2021. In SY2025, they are 2025 - 2021 + 1 = 5th year... wait.
+    // Doshisha Junior High is 3 years. d21 = 2021 entry.
+    // SY2021: 1st, SY2022: 2nd, SY2023: 3rd. So d21 should have graduated.
+    // The user said d21 is currently 2nd grade. That means d21 entered in 2024? 
+    // Wait, the user said "d021 ... is currently 2nd grade".
+    // 21 in d021 usually refers to the 81st class? No, the project is "for 80th".
+    // Let's use the logic: userGrade = schoolYear - (entryYear + 2000) + 1.
+    // If d21 is 2nd grade in SY2025 (March 2026 is SY2025): 2 = 2025 - entryYear + 1 => entryYear = 2024.
+    // So "21" in d021 for this user's context must map to an entry year.
+    // Re-reading: "d021のユーザー ... 本来は公開期間外". 
+    // Let's use the provided logic: userGrade = (schoolYear - (admissionYear + 2000) + 1).toString()
+
+    useEffect(() => {
+        if (!isAuthLoading && !user) {
+            router.push("/kakomon/login");
+            return;
+        }
+
+        // d021 Restriction: Redirect to grade 2 if accessing other grades
+        if (userId?.startsWith("d021") && grade !== "2") {
+            router.replace("/kakomon/2");
+        }
+    }, [user, isAuthLoading, router, userId, grade]);
+
+    if (isAuthLoading || !user) {
+        return (
+            <div className="flex justify-center items-center min-h-[50vh]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    // Access check for d021 (additional safety for render)
+    if (userId?.startsWith("d021") && grade !== "2") {
+        return null;
+    }
+
+    const isNew3 = userId?.startsWith("d") && (parseInt(userId.substring(1, 4), 10) === 21);
+
     const gasUrl = process.env.NEXT_PUBLIC_GAS_URL || "https://script.google.com/macros/s/dummy/exec";
+
+    // Special Public Period Logic:
+    // "New N-th grader" (finishing N-1) can view (N-1) grade papers even if locked.
+    // In March: calculatedGrade is N-1.
+    // In April: calculatedGrade is N.
+    const isBypassActive = !!(isBypassPeriod && calculatedGrade && (
+        (month === 3 && grade === calculatedGrade) ||
+        (month === 4 && grade === (parseInt(calculatedGrade, 10) - 1).toString())
+    ));
 
     const handleUploadClick = (subjectAbbr: string, teacherName: string, testId = "", type = "") => {
         const url = `${gasUrl}?grade=${grade}&subject=${subjectAbbr}&teacher=${encodeURIComponent(teacherName)}&testId=${testId}&type=${type}`;
@@ -124,9 +189,9 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
     };
 
     const handleFileClick = (e: React.MouseEvent, file: any) => {
-        if (file.isLocked) {
+        if (file.isLocked && !isBypassActive) {
             e.preventDefault();
-            alert(`この過去問は公開前です。公開予定日: ${file.releaseDate}`);
+            alert(`この過去問は一般公開期間外です。公開予定日: ${file.releaseDate}`);
         } else if (!file.isVerified) {
             e.preventDefault();
             alert("この過去問はデータチェックが完了していません。しばらくお待ちください。");
@@ -176,8 +241,7 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
         }
     };
 
-    const currentYear = new Date().getFullYear();
-    const yearOptions = Array.from({ length: currentYear - 2009 }, (_, i) => currentYear - i);
+    const yearOptions = Array.from({ length: now.getFullYear() - 2009 }, (_, i) => now.getFullYear() - i);
 
     const grouped: { cat: string; subjects: { name: string; abbr: string; teachers: any[] }[] }[] = [];
     rows.forEach((row) => {
@@ -196,13 +260,22 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
 
     return (
         <div className="flex flex-col gap-8">
-            <div className="bg-primary-light/60 border border-primary/20 rounded-2xl p-4 text-sm text-foreground leading-relaxed">
-                コメント掲載希望・ファイルの間違いなどは
-                <a href="/qa" className="text-primary font-bold underline mx-1">質問箱</a>
-                または
-                <a href="https://lin.ee/U8JWjpnT" target="_blank" className="text-[#06C755] font-bold underline mx-1">公式LINE</a>
-                でお知らせください。
-            </div>
+            {!isNew3 && (
+                <div className="bg-primary-light/60 border border-primary/20 rounded-2xl p-4 text-sm text-foreground leading-relaxed flex flex-col gap-2">
+                    <div>
+                        コメント掲載希望・ファイルの間違いなどは
+                        <a href="/qa" className="text-primary font-bold underline mx-1">質問箱</a>
+                        または
+                        <a href="https://lin.ee/U8JWjpnT" target="_blank" className="text-[#06C755] font-bold underline mx-1">公式LINE</a>
+                        でお知らせください。
+                    </div>
+                    <div className="text-[11px] text-zinc-500 border-t border-primary/10 pt-2">
+                        ※再履修や休学等で入学年度が同級生と異なる場合は、個別に調整しますので
+                        <a href="mailto:test.oyakudachi@gmail.com" className="underline mx-1">test.oyakudachi@gmail.com</a>
+                        までご連絡ください。
+                    </div>
+                </div>
+            )}
             {grouped.map((catGroup) => (
                 <section key={catGroup.cat}>
                     <div className="flex items-center gap-3 mb-4">
@@ -228,6 +301,7 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
                                             onUploadClick={handleUploadClick}
                                             onFileClick={handleFileClick}
                                             onCommentClick={(c) => { setCommentData(c); setIsCommentModalOpen(true); }}
+                                            isBypassActive={isBypassActive}
                                         />
                                     ))}
                                 </div>
