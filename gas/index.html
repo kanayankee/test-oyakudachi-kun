@@ -52,7 +52,7 @@
                 <div class="flex flex-col gap-1 w-1/2">
                     <label class="font-bold text-sm text-foreground">教員名</label>
                     <? if (teacher && teacher !== '追加') { ?>
-                    <input type="text" name="teacher" value="<?= teacher ?>" readonly class="bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-500 cursor-not-allowed">
+                    <textarea name="teacher" readonly class="bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-500 cursor-not-allowed resize-none h-16"><?= teacher ?></textarea>
                     <? } else { ?>
                     <textarea name="teacherInput" placeholder="苗字のみ（複数の場合は改行）" required class="border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primaryLight focus:outline-none resize-none h-16"></textarea>
                     <? } ?>

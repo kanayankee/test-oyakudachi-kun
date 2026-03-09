@@ -55,10 +55,11 @@ export default async function KakomonPage({
             });
         });
 
+        const normalizedTeacherName = teacherName.split(/[\n\s　]+/).filter(Boolean).join(' ');
         const tFiles = gradeFiles.filter(fRow => {
             const fileName = fRow[5] || "";
             const isMatchSubject = fileName.includes(`_${subjectAbbr}_`);
-            const isMatchTeacher = fRow[3] === teacherName || fRow[3] === "共通";
+            const isMatchTeacher = fRow[3] === normalizedTeacherName || fRow[3] === "共通";
             return isMatchSubject && isMatchTeacher;
         });
 
