@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Link from "next/link";
@@ -61,23 +62,25 @@ export default function RootLayout({
       </head>
       <body className={`${genJyuu.className} antialiased flex flex-col min-h-screen`}>
         <SessionProvider>
-          <AuthProvider>
-            <div className="flex-1 flex flex-col items-center w-full">
-              <Header />
-              <main className="flex-1 w-full max-w-[1400px] px-4 md:px-8 py-4 mt-6">
-                {children}
-              </main>
-            </div>
-            <footer className="w-full py-8 mt-12 border-t border-zinc-200 flex flex-col items-center gap-4 bg-white/50 text-foreground text-sm">
-              <div className="flex gap-6">
-                <Link href="/termsofservice" className="text-zinc-500 hover:text-zinc-800 transition-colors">利用規約</Link>
-                <Link href="/privacystatement" className="text-zinc-500 hover:text-zinc-800 transition-colors">プライバシーポリシー</Link>
+          <React.Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
+            <AuthProvider>
+              <div className="flex-1 flex flex-col items-center w-full">
+                <Header />
+                <main className="flex-1 w-full max-w-[1400px] px-4 md:px-8 py-4 mt-6">
+                  {children}
+                </main>
               </div>
-              <div className="text-zinc-400 font-medium">
-                ©︎ 2026 テストお役立ちくん All rights reserved.
-              </div>
-            </footer>
-          </AuthProvider>
+              <footer className="w-full py-8 mt-12 border-t border-zinc-200 flex flex-col items-center gap-4 bg-white/50 text-foreground text-sm">
+                <div className="flex gap-6">
+                  <Link href="/termsofservice" className="text-zinc-500 hover:text-zinc-800 transition-colors">利用規約</Link>
+                  <Link href="/privacystatement" className="text-zinc-500 hover:text-zinc-800 transition-colors">プライバシーポリシー</Link>
+                </div>
+                <div className="text-zinc-400 font-medium">
+                  ©︎ 2026 テストお役立ちくん All rights reserved.
+                </div>
+              </footer>
+            </AuthProvider>
+          </React.Suspense>
         </SessionProvider>
       </body>
     </html>

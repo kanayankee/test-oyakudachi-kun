@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (status === "authenticated" && session?.user?.email) {
             const user = session.user;
             const email = user.email!;
-            const savedManualYear = sessionStorage.getItem("manual_admission_year");
+            const savedManualYear = typeof window !== "undefined" ? sessionStorage.getItem("manual_admission_year") : null;
             if (savedManualYear) setManualAdmissionYear(parseInt(savedManualYear, 10));
 
             const userId = email.split("@")[0];
@@ -52,20 +52,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .then(json => {
                     if (json.success && json.manualAdmissionYear) {
                         setManualAdmissionYear(parseInt(json.manualAdmissionYear, 10));
-                        sessionStorage.setItem("manual_admission_year", json.manualAdmissionYear.toString());
+                        if (typeof window !== "undefined") {
+                            sessionStorage.setItem("manual_admission_year", json.manualAdmissionYear.toString());
+                        }
                     }
                 })
                 .catch(e => console.error("Failed to record user:", e));
         } else if (status === "unauthenticated") {
             setManualAdmissionYear(null);
-            sessionStorage.removeItem("manual_admission_year");
+            if (typeof window !== "undefined") {
+                sessionStorage.removeItem("manual_admission_year");
+            }
         }
     }, [session, status]);
 
     const signOut = async () => {
-        await nextAuthSignOut({ callbackUrl: "/login" });
+        await nextAuthSignOut({ callbackUrl: "/kakomon/login" });
         setManualAdmissionYear(null);
-        sessionStorage.removeItem("manual_admission_year");
+        if (typeof window !== "undefined") {
+            sessionStorage.removeItem("manual_admission_year");
+        }
     };
 
     const user = session?.user ?? (adminParam ? { email: `${adminParam}@example.com`, name: "Admin Test" } : null);

@@ -1,7 +1,5 @@
-import { notFound } from "next/navigation";
-
 export default function DecoyPage() {
-  // Explicitly trigger 404 for the root page on the custom domain
-  // (Middleware also handles this, but this is a double safety)
-  notFound();
+  // We return null here. The actual 404 behavior for the root path
+  // is handled by the middleware.ts for production domains.
+  return null;
 }
