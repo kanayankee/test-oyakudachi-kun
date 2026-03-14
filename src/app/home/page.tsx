@@ -69,7 +69,7 @@ export default async function Home() {
             target="_blank"
             className="col-span-1 md:col-span-2 bg-[#06C755]/10 border border-[#06C755]/20 hover:bg-[#06C755]/20 rounded-2xl shadow-soft p-6 flex flex-col items-center justify-center gap-3 transition-colors group text-center"
           >
-            <span className="text-xl font-bold text-[#06C755] group-hover:text-[#05B04A] transition-colors">お役立ちくん公式LINE<br />(新1･2年生専用)</span>
+            <span className="text-xl font-bold text-[#06C755] group-hover:text-[#05B04A] transition-colors">お役立ちくん公式LINE<br />(新2年生専用)</span>
             <span className="text-sm text-zinc-600">過去問が公開されたらお知らせします！<br />質問箱で聞きにくいことはこちらへ</span>
           </Link>
 
