@@ -14,6 +14,12 @@ interface Props {
 export default function MultiDigitInput({ length, value, onChange, disabled, autoFocus, className }: Props) {
     const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
+    const normalizeDigits = (raw: string) => {
+        return raw
+            .replace(/[\uFF10-\uFF19]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+            .replace(/[^0-9]/g, "");
+    };
+
     // when value prop changes externally, update individual boxes
     useEffect(() => {
         // nothing here; each box reads from value
@@ -47,7 +53,10 @@ export default function MultiDigitInput({ length, value, onChange, disabled, aut
     );
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
-        const ch = e.target.value.replace(/[^0-9]/g, "");
+        if ((e.nativeEvent as any)?.isComposing) {
+            return;
+        }
+        const ch = normalizeDigits(e.target.value);
         if (!ch) {
             // cleared
             const newVal = value.slice(0, idx) + " " + value.slice(idx + 1);
@@ -64,7 +73,7 @@ export default function MultiDigitInput({ length, value, onChange, disabled, aut
 
     const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
         e.preventDefault();
-        const paste = e.clipboardData.getData("text").replace(/[^0-9]/g, "");
+        const paste = normalizeDigits(e.clipboardData.getData("text"));
         if (!paste) return;
         const digits = paste.slice(0, length);
         onChange(digits);
@@ -82,6 +91,14 @@ export default function MultiDigitInput({ length, value, onChange, disabled, aut
                     maxLength={1}
                     value={value[idx] || ""}
                     onChange={(e) => handleChange(e, idx)}
+                    onCompositionEnd={(e) => {
+                        const ch = normalizeDigits(e.currentTarget.value);
+                        if (!ch) return;
+                        const digit = ch[0];
+                        const newVal = value.slice(0, idx) + digit + value.slice(idx + 1);
+                        onChange(newVal);
+                        if (idx + 1 < length) focusIndex(idx + 1);
+                    }}
                     onKeyDown={(e) => handleKeyDown(e, idx)}
                     onPaste={handlePaste}
                     ref={(el) => { inputsRef.current[idx] = el; }}
