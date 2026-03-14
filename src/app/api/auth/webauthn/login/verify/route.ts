@@ -48,9 +48,9 @@ export async function POST(request: Request) {
     expectedChallenge,
     expectedOrigin: origin,
     expectedRPID: rpID,
-    credential: {
-      id: storedCredential.id,
-      publicKey: Buffer.from(storedCredential.publicKey, "base64"),
+    authenticator: {
+      credentialID: Buffer.from(storedCredential.id, "base64url"),
+      credentialPublicKey: Buffer.from(storedCredential.publicKey, "base64"),
       counter: storedCredential.counter || 0,
     },
     requireUserVerification: true,

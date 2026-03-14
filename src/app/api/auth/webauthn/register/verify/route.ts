@@ -33,14 +33,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "verification failed" }, { status: 400 });
   }
 
-  const cred = verification.registrationInfo!.credential;
+  const regInfo = verification.registrationInfo!;
   const userRef = firestore.collection("users").doc(email);
   await userRef.set({
     email,
     credentials: admin.firestore.FieldValue.arrayUnion({
-      id: cred.id,
-      publicKey: Buffer.from(cred.publicKey).toString("base64"),
-      counter: cred.counter,
+      id: Buffer.from(regInfo.credentialID).toString("base64url"),
+      publicKey: Buffer.from(regInfo.credentialPublicKey).toString("base64"),
+      counter: regInfo.counter,
     }),
   }, { merge: true });
 

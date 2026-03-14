@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const allowCreds = credentials.map((c) => ({ id: c.id, type: "public-key" }));
+  const allowCreds = credentials.map((c) => ({ id: c.id, type: "public-key" as const }));
   const rpID = process.env.NEXTAUTH_URL! ? new URL(process.env.NEXTAUTH_URL!).hostname : "";
   const options = generateAuthenticationOptions({
     rpID,
