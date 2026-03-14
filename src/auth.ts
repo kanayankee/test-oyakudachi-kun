@@ -3,6 +3,23 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { verifyOtp } from "@/lib/otp";
 import { firestore } from "@/lib/firebaseAdmin";
 
+function normalizeStoredCredentialId(rawId: unknown): string | null {
+    if (typeof rawId !== "string" || !rawId) {
+        return null;
+    }
+
+    try {
+        const decodedUtf8 = Buffer.from(rawId, "base64url").toString("utf8");
+        if (/^[A-Za-z0-9_-]+$/.test(decodedUtf8)) {
+            return decodedUtf8;
+        }
+    } catch {
+        // Keep raw value as-is.
+    }
+
+    return rawId;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
     providers: [
         CredentialsProvider({
@@ -30,7 +47,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         snapshot.forEach((d) => {
                             const data = d.data();
                             const creds = data?.credentials || [];
-                            if (creds.find((c: any) => c.id === id)) {
+                            if (creds.find((c: any) => normalizeStoredCredentialId(c?.id) === id)) {
                                 ownerEmail = d.id;
                             }
                         });

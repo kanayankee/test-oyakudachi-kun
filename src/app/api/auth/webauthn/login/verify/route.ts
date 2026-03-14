@@ -5,6 +5,23 @@ import {
   verifyAuthenticationResponse,
 } from "@simplewebauthn/server";
 
+function normalizeStoredCredentialId(rawId: unknown): string | null {
+  if (typeof rawId !== "string" || !rawId) {
+    return null;
+  }
+
+  try {
+    const decodedUtf8 = Buffer.from(rawId, "base64url").toString("utf8");
+    if (/^[A-Za-z0-9_-]+$/.test(decodedUtf8)) {
+      return decodedUtf8;
+    }
+  } catch {
+    // Keep raw value below.
+  }
+
+  return rawId;
+}
+
 export async function POST(request: Request) {
   const body = await request.json();
   const { email, assertionResponse, expectedChallenge: fallbackChallenge } = body;
@@ -33,18 +50,33 @@ export async function POST(request: Request) {
 
   const { id } = assertionResponse;
   let storedCredential: any = null;
+  let matchedCredentialId: string | null = null;
   let ownerEmail: string | null = email || null;
   if (email) {
     const doc = await firestore.collection("users").doc(email).get();
     if (doc.exists) {
       const creds = doc.data()?.credentials || [];
-      storedCredential = creds.find((c: any) => c.id === id);
+      storedCredential = creds.find((c: any) => {
+        const normalizedId = normalizeStoredCredentialId(c?.id);
+        if (normalizedId === id) {
+          matchedCredentialId = c?.id || null;
+          return true;
+        }
+        return false;
+      });
     }
   } else {
     const snapshot = await firestore.collection("users").get();
     snapshot.forEach((d) => {
       const creds = d.data()?.credentials || [];
-      const found = creds.find((c: any) => c.id === id);
+      const found = creds.find((c: any) => {
+        const normalizedId = normalizeStoredCredentialId(c?.id);
+        if (normalizedId === id) {
+          matchedCredentialId = c?.id || null;
+          return true;
+        }
+        return false;
+      });
       if (found) {
         storedCredential = found;
         ownerEmail = d.id;
@@ -85,7 +117,9 @@ export async function POST(request: Request) {
   const ownerData = ownerSnap.data() || {};
   const currentCreds = Array.isArray(ownerData.credentials) ? ownerData.credentials : [];
   const updatedCreds = currentCreds.map((c: any) =>
-    c.id === id ? { ...c, counter: verification.authenticationInfo.newCounter } : c
+    (c.id === matchedCredentialId || normalizeStoredCredentialId(c?.id) === id)
+      ? { ...c, counter: verification.authenticationInfo.newCounter }
+      : c
   );
   await ownerRef.set({ credentials: updatedCreds }, { merge: true });
 

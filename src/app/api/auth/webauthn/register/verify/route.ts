@@ -6,6 +6,20 @@ import {
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
 
+function toBase64Url(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  return Buffer.from(value as ArrayBufferLike).toString("base64url");
+}
+
+function toBase64(value: unknown): string {
+  if (typeof value === "string") {
+    return Buffer.from(value, "base64url").toString("base64");
+  }
+  return Buffer.from(value as ArrayBufferLike).toString("base64");
+}
+
 export async function POST(request: Request) {
   const body = await request.json();
   const { email, attestationResponse, expectedChallenge: fallbackChallenge } = body;
@@ -50,8 +64,8 @@ export async function POST(request: Request) {
   await userRef.set({
     email,
     credentials: admin.firestore.FieldValue.arrayUnion({
-      id: Buffer.from(regInfo.credentialID).toString("base64url"),
-      publicKey: Buffer.from(regInfo.credentialPublicKey).toString("base64"),
+      id: toBase64Url(regInfo.credentialID),
+      publicKey: toBase64(regInfo.credentialPublicKey),
       counter: regInfo.counter,
     }),
   }, { merge: true });

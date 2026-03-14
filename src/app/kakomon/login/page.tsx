@@ -58,6 +58,11 @@ export default function LoginPage() {
         return name === "NotAllowedError" || name === "AbortError" || /cancel|canceled|aborted/i.test(message);
     };
 
+    const isNoSavedPasskeyError = (err: any) => {
+        const message = String(err?.message || "").toLowerCase();
+        return /no passkey|no saved|not available|credential|保存済みパスワードまたはパスキーはありません/.test(message);
+    };
+
     useEffect(() => {
         if (typeof window === "undefined") return;
         const ua = window.navigator.userAgent || "";
@@ -71,34 +76,49 @@ export default function LoginPage() {
 
     const navigateAfterLogin = () => {
         if (fullEmail.startsWith("d021")) {
-            router.push("/kakomon/2");
+            window.location.assign("/kakomon/2");
             return;
         }
         if (returnTo) {
-            router.push(returnTo);
+            window.location.assign(returnTo);
         } else {
-            router.push("/home");
+            window.location.assign("/home");
         }
     };
 
     const tryPasskeyLogin = async (email: string): Promise<"success" | "cancelled"> => {
         setAuthenticating(true);
         try {
-            const resp = await fetch("/api/auth/webauthn/login/options", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
-            });
-            const opts = await resp.json().catch(() => null);
-            if (!resp.ok) {
-                throw new Error(opts?.error || `パスキー認証オプションの取得に失敗しました (${resp.status})`);
+            const getOptions = async (payload: Record<string, string>) => {
+                const resp = await fetch("/api/auth/webauthn/login/options", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const opts = await resp.json().catch(() => null);
+                if (!resp.ok) {
+                    throw new Error(opts?.error || `パスキー認証オプションの取得に失敗しました (${resp.status})`);
+                }
+                return opts;
+            };
+
+            let opts = await getOptions({ email });
+            let assertionResponse: any;
+            try {
+                assertionResponse = await startAuthentication(opts);
+            } catch (firstErr: any) {
+                if (!isNoSavedPasskeyError(firstErr)) {
+                    throw firstErr;
+                }
+                // Fallback: allow discoverable passkeys when account-filtered credentials are unavailable on this client.
+                opts = await getOptions({});
+                assertionResponse = await startAuthentication(opts);
             }
-            const assertionResponse = await startAuthentication(opts);
             const result: any = await signIn("credentials", {
                 email,
                 otp: "",
                 redirect: false,
-                assertionResponse,
+                assertionResponse: JSON.stringify(assertionResponse),
             } as any);
 
             if (!result || (typeof result === "object" && !result.ok)) {
