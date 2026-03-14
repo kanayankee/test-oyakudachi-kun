@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { startRegistration } from "@simplewebauthn/browser";
 
 function TeacherAccordion({
     row,
@@ -124,6 +125,7 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
     const [addTeacherYear, setAddTeacherYear] = useState("");
     const [addTeacherStatus, setAddTeacherStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
     const [addTeacherError, setAddTeacherError] = useState("");
+    const [registeringDevice, setRegisteringDevice] = useState(false);
 
     const now = new Date();
     const month = now.getMonth() + 1;
@@ -187,6 +189,59 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
         }
     };
 
+    const isUnsupportedOrAlreadyRegisteredError = (err: any) => {
+        const name = err?.name || "";
+        const message = String(err?.message || "");
+        return name === "InvalidStateError" || name === "NotSupportedError" || /already|registered|not support|unsupported/i.test(message);
+    };
+
+    const handleRegisterThisDevice = async () => {
+        if (!user?.email) return;
+        if (typeof window === "undefined" || !(navigator as any).credentials) {
+            window.alert("お使いの端末は登録に対応していないか、すでに登録済みです");
+            return;
+        }
+
+        setRegisteringDevice(true);
+        try {
+            const optRes = await fetch("/api/auth/webauthn/register/options", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: user.email }),
+            });
+            const options = await optRes.json().catch(() => null);
+            if (!optRes.ok) {
+                throw new Error(options?.error || `パスキー登録オプションの取得に失敗しました (${optRes.status})`);
+            }
+
+            const registrationResponse = await startRegistration(options);
+
+            const verifyRes = await fetch("/api/auth/webauthn/register/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: user.email,
+                    attestationResponse: registrationResponse,
+                    expectedChallenge: options.challenge,
+                }),
+            });
+            const verifyJson = await verifyRes.json().catch(() => null);
+            if (!verifyRes.ok || !verifyJson?.success) {
+                throw new Error(verifyJson?.error || `パスキー登録の検証に失敗しました (${verifyRes.status})`);
+            }
+
+            window.alert("この端末の登録が完了しました");
+        } catch (e: any) {
+            if (isUnsupportedOrAlreadyRegisteredError(e)) {
+                window.alert("お使いの端末は登録に対応していないか、すでに登録済みです");
+            } else {
+                console.log("[passkey] device registration skipped", e);
+            }
+        } finally {
+            setRegisteringDevice(false);
+        }
+    };
+
     const openAddTeacher = (cat: string, name: string, abbr: string) => {
         setAddTeacherTarget({ cat, name, abbr });
         setAddTeacherName("");
@@ -247,6 +302,20 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
 
     return (
         <div className="flex flex-col gap-8">
+            <div className="bg-white rounded-2xl border border-primary-light shadow-soft p-4 flex flex-col gap-2">
+                <button
+                    type="button"
+                    onClick={handleRegisterThisDevice}
+                    disabled={registeringDevice}
+                    className="self-start text-sm font-bold px-3 py-2 rounded-lg border bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                >
+                    {registeringDevice ? "登録中..." : "+ 端末を登録する"}
+                </button>
+                <p className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 inline-block w-fit">
+                    次回以降のログインが楽になります
+                </p>
+            </div>
+
             {!isNew3 && (
                 <div className="bg-primary-light/60 border border-primary/20 rounded-2xl p-4 text-sm text-foreground leading-relaxed flex flex-col gap-2">
                     <div>

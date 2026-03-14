@@ -9,9 +9,10 @@ interface Props {
     disabled?: boolean;
     autoFocus?: boolean;
     className?: string;
+    autoComplete?: string;
 }
 
-export default function MultiDigitInput({ length, value, onChange, disabled, autoFocus, className }: Props) {
+export default function MultiDigitInput({ length, value, onChange, disabled, autoFocus, className, autoComplete = "off" }: Props) {
     const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
     const normalizeDigits = (raw: string) => {
@@ -28,6 +29,16 @@ export default function MultiDigitInput({ length, value, onChange, disabled, aut
     const focusIndex = (idx: number) => {
         const inp = inputsRef.current[idx];
         if (inp && !disabled) inp.focus();
+    };
+
+    const applyDigitsFromIndex = (digits: string, idx: number) => {
+        const current = Array.from({ length }, (_, i) => value[i] || "");
+        for (let i = 0; i < digits.length && idx + i < length; i++) {
+            current[idx + i] = digits[i];
+        }
+        onChange(current.join(""));
+        const nextIdx = Math.min(idx + digits.length, length - 1);
+        focusIndex(nextIdx);
     };
 
     const handleKeyDown = useCallback(
@@ -62,12 +73,7 @@ export default function MultiDigitInput({ length, value, onChange, disabled, aut
             const newVal = value.slice(0, idx) + " " + value.slice(idx + 1);
             onChange(newVal.replace(/ /g, ""));
         } else {
-            // only take first digit
-            const digit = ch[0];
-            const newVal =
-                value.slice(0, idx) + digit + value.slice(idx + 1);
-            onChange(newVal);
-            if (idx + 1 < length) focusIndex(idx + 1);
+            applyDigitsFromIndex(ch, idx);
         }
     };
 
@@ -94,15 +100,16 @@ export default function MultiDigitInput({ length, value, onChange, disabled, aut
                     onCompositionEnd={(e) => {
                         const ch = normalizeDigits(e.currentTarget.value);
                         if (!ch) return;
-                        const digit = ch[0];
-                        const newVal = value.slice(0, idx) + digit + value.slice(idx + 1);
-                        onChange(newVal);
-                        if (idx + 1 < length) focusIndex(idx + 1);
+                        applyDigitsFromIndex(ch, idx);
                     }}
                     onKeyDown={(e) => handleKeyDown(e, idx)}
                     onPaste={handlePaste}
                     ref={(el) => { inputsRef.current[idx] = el; }}
                     disabled={disabled}
+                    autoComplete={autoComplete}
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
                     className="w-16 h-16 text-center text-2xl border border-zinc-300 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary"
                     autoFocus={autoFocus && idx === 0}
                 />
