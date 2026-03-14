@@ -88,7 +88,7 @@ export default function MultiDigitInput({ length, value, onChange, disabled, aut
     };
 
     return (
-        <div className={`flex gap-2 ${className || ""}`}>
+        <div className={`flex gap-1.5 sm:gap-2 max-w-full ${className || ""}`}>
             {Array.from({ length }).map((_, idx) => (
                 <input
                     key={idx}
@@ -110,7 +110,7 @@ export default function MultiDigitInput({ length, value, onChange, disabled, aut
                     autoCorrect="off"
                     autoCapitalize="none"
                     spellCheck={false}
-                    className="w-16 h-16 text-center text-2xl border border-zinc-300 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="w-[clamp(2.25rem,11vw,4rem)] h-[clamp(2.75rem,11vw,4rem)] text-center text-[clamp(1.125rem,4.6vw,1.5rem)] border border-zinc-300 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary"
                     autoFocus={autoFocus && idx === 0}
                 />
             ))}
