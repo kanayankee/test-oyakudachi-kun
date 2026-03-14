@@ -67,6 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [session, status]);
 
     const signOut = async () => {
+        // d021 users are not allowed to sign out
+        if (userId?.startsWith("d021")) {
+            return;
+        }
         await nextAuthSignOut({ callbackUrl: "/kakomon/login" });
         setManualAdmissionYear(null);
         if (typeof window !== "undefined") {

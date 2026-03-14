@@ -43,6 +43,7 @@
         <form id="uploadForm" onsubmit="handleFormSubmit(event)" class="flex flex-col gap-5 p-5">
             <input type="hidden" name="grade" value="<?= grade ?>">
             <input type="hidden" name="subject" value="<?= subject ?>">
+            <input type="hidden" name="studentId" value="<?= typeof studentId !== 'undefined' ? studentId : '' ?>">
 
             <div class="flex gap-3">
                 <div class="flex flex-col gap-1 w-1/2">
@@ -189,6 +190,7 @@
 
                     const formData = {
                         grade: form.querySelector('[name="grade"]').value,
+                        studentId: form.querySelector('[name="studentId"]').value,
                         nendo: form.querySelector('[name="nendo"]').value,
                         testId: form.querySelector('[name="testId"]').value,
                         subject: form.querySelector('[name="subject"]').value,

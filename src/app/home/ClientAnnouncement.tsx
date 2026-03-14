@@ -4,9 +4,14 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import Loading from "@/app/loading";
 
 export default function ClientAnnouncement({ announcement }: { announcement: any }) {
     const [isOpen, setIsOpen] = useState(false);
+
+    if (!announcement) {
+        return <Loading />;
+    }
 
     return (
         <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm flex flex-col transition-colors hover:border-primary-light">

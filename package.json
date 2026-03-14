@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^9.0.1",
+    "@simplewebauthn/server": "^9.0.2",
+    "firebase-admin": "^13.7.0",
     "googleapis": "^171.4.0",
     "next": "15.1.12",
     "next-auth": "^5.0.0-beta.25",

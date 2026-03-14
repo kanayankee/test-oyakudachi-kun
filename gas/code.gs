@@ -8,6 +8,7 @@ function doGet(e) {
     html.teacher = e.parameter.teacher || '共通';
     html.testId = e.parameter.testId || '';
     html.type = e.parameter.type || '';
+    html.studentId = e.parameter.studentId || '';
     return html.evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -68,6 +69,7 @@ function doPost(e) {
 function processUpload(formObject) {
     try {
         var grade = formObject.grade;
+        var studentId = formObject.studentId || '';
         var nendoFull = formObject.nendo; // e.g., 2024
         var nendo = nendoFull.slice(-2);
         var testId = formObject.testId;
@@ -108,7 +110,7 @@ function processUpload(formObject) {
             var pdfFile = createPdfFromImagesWithTemplateSlides(fileIds, finalName, FOLDER_ID);
             var insertedRow;
             if (pdfFile) {
-                insertedRow = recordToSpreadsheet(grade, nendo, testId, teacher, type, pdfFile.getName(), pdfFile.getId());
+                insertedRow = recordToSpreadsheet(grade, nendo, testId, teacher, type, pdfFile.getName(), pdfFile.getId(), studentId);
             }
 
             // 一時ファイル削除
@@ -120,11 +122,12 @@ function processUpload(formObject) {
             var pdfBlob = formObject.pdfFile;
             var pdfFile = folder.createFile(pdfBlob);
             pdfFile.setName(finalName + ".pdf");
-            var insertedRow = recordToSpreadsheet(grade, nendo, testId, teacher, type, pdfFile.getName(), pdfFile.getId());
+            var insertedRow = recordToSpreadsheet(grade, nendo, testId, teacher, type, pdfFile.getName(), pdfFile.getId(), studentId);
         }
 
         var gid = "1548533520";
         var mailBody = "以下の過去問がアップロードされました。スプレッドシートで内容を確認し、チェックボックス（H列）をオンにしてください。\n\n" +
+            "学籍番号: " + studentId + "\n" +
             "ファイル名: " + finalName + "\n" +
             "URL: https://docs.google.com/spreadsheets/d/" + SPREADSHEET_ID + "/edit?gid=" + gid + "#gid=" + gid + "&range=A" + insertedRow;
         sendKakomonMail(mailBody);
@@ -135,10 +138,11 @@ function processUpload(formObject) {
     }
 }
 
-function recordToSpreadsheet(grade, nendo, testId, teacher, type, fileName, fileId) {
+function recordToSpreadsheet(grade, nendo, testId, teacher, type, fileName, fileId, studentId) {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName("過去問");
-    sheet.appendRow([grade, nendo, testId, teacher, type, fileName, fileId, false]);
+    // A-H are existing fields, I-J are reserved blanks, K stores studentId.
+    sheet.appendRow([grade, nendo, testId, teacher, type, fileName, fileId, false, "", "", studentId || ""]);
     return sheet.getLastRow();
 }
 
@@ -218,7 +222,7 @@ function sendQuestionMail(body) {
     var threads = GmailApp.search('in:sent subject:"質問箱通知"');
 
     if (threads.length > 0) {
-        threads[0].reply(body);
+        GmailApp.sendEmail(emailTo, subject, body, { threadId: threads[0].getId() });
     } else {
         GmailApp.sendEmail(emailTo, subject, body);
     }
@@ -230,7 +234,7 @@ function sendKakomonMail(body) {
     var threads = GmailApp.search('in:sent subject:"過去問アップロード通知"');
 
     if (threads.length > 0) {
-        threads[0].reply(body);
+        GmailApp.sendEmail(emailTo, subject, body, { threadId: threads[0].getId() });
     } else {
         GmailApp.sendEmail(emailTo, subject, body);
     }
