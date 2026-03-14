@@ -273,8 +273,7 @@ export default function LoginPage() {
                             ログイン / 登録する
                         </button>
                         <p className="mt-2 text-sm text-zinc-500">
-                            迷惑メールフォルダに入ってしまう事例が多発しています。<br />
-                            迷惑メールフォルダーをご確認ください。
+                            メールが届かない場合は迷惑メールフォルダもご確認ください。
                         </p>
                         <div className="mt-4 text-sm">
                             {timer > 0 ? (
