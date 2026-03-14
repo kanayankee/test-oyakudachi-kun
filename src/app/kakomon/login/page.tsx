@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthContext";
 import MultiDigitInput from "@/components/MultiDigitInput";
 import { signIn } from "next-auth/react";
-import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
+import { startAuthentication } from "@simplewebauthn/browser";
 import Loading from "@/app/loading";
 
 export default function LoginPage() {
@@ -20,7 +20,12 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!isLoading && user) {
-            router.push("/home");
+            const uid = (user.email || "").split("@")[0] || "";
+            if (uid.startsWith("d021")) {
+                router.replace("/kakomon/2");
+            } else {
+                router.replace("/home");
+            }
         }
     }, [user, isLoading, router]);
 
@@ -37,8 +42,6 @@ export default function LoginPage() {
     const searchParams = useSearchParams();
     const [returnTo, setReturnTo] = useState<string | null>(null);
 
-    const [isNewUser, setIsNewUser] = useState<boolean>(false);
-
     const [sending, setSending] = useState(false);
     const [authenticating, setAuthenticating] = useState(false);
     const [canUseWebauthn, setCanUseWebauthn] = useState(false);
@@ -48,8 +51,6 @@ export default function LoginPage() {
         setCanUseWebauthn(typeof window !== "undefined" && (navigator as any).credentials);
     }, []);
     const [hasRegisteredPasskey, setHasRegisteredPasskey] = useState<boolean>(false);
-    const [shouldRegisterPasskeyAfterOtp, setShouldRegisterPasskeyAfterOtp] = useState<boolean>(false);
-    const [willPromptPasskeyAfterOtp, setWillPromptPasskeyAfterOtp] = useState<boolean>(false);
 
     const isPasskeyCancelError = (err: any) => {
         const name = err?.name || "";
@@ -121,28 +122,11 @@ export default function LoginPage() {
             // check whether account already exists
             const existsRes = await fetch(`/api/auth/users/exists?email=${encodeURIComponent(fullEmail)}`);
             const existsJson = await existsRes.json();
-            setIsNewUser(!existsJson.exists);
             const hasPasskey = !!existsJson.hasPasskey;
             setHasRegisteredPasskey(hasPasskey);
-            setShouldRegisterPasskeyAfterOtp(false);
-            setWillPromptPasskeyAfterOtp(canUseWebauthn && !hasPasskey);
 
             const rt = searchParams.get("returnTo");
             if (rt) setReturnTo(rt);
-
-            if (existsJson.exists && existsJson.hasPasskey && canUseWebauthn) {
-                try {
-                    const passkeyResult = await tryPasskeyLogin(fullEmail);
-                    if (passkeyResult === "success") {
-                        navigateAfterLogin();
-                        return;
-                    }
-                } catch (e: any) {
-                    console.error("passkey-first login failed", e);
-                    setShouldRegisterPasskeyAfterOtp(true);
-                    setError("このアカウントには登録済みパスキーがあります。まずパスキー認証を試しましたが、この端末では使えなかったため認証コードに切り替えます。ログイン後にこの端末のパスキー登録を促します。");
-                }
-            }
 
             const res = await fetch("/api/auth/otp/send", {
                 method: "POST",
@@ -164,39 +148,6 @@ export default function LoginPage() {
         }
     };
 
-    const registerPasskey = async () => {
-        // full WebAuthn registration via simplewebauthn/browser helper
-        try {
-            const optRes = await fetch("/api/auth/webauthn/register/options", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: fullEmail }),
-            });
-            const options = await optRes.json().catch(() => null);
-            if (!optRes.ok) {
-                throw new Error(options?.error || `パスキー登録オプションの取得に失敗しました (${optRes.status})`);
-            }
-            const registrationResponse = await startRegistration(options);
-            // send response to server for verification
-            const verifyRes = await fetch("/api/auth/webauthn/register/verify", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: fullEmail,
-                    attestationResponse: registrationResponse,
-                    expectedChallenge: options.challenge,
-                }),
-            });
-            const verifyJson = await verifyRes.json().catch(() => null);
-            if (!verifyRes.ok || !verifyJson?.success) {
-                throw new Error(verifyJson?.error || `パスキー登録の検証に失敗しました (${verifyRes.status})`);
-            }
-        } catch (e) {
-            console.error("passkey registration failed", e);
-            throw e;
-        }
-    };
-
     const verifyOtpCode = async () => {
         setError("");
         setAuthenticating(true);
@@ -207,15 +158,7 @@ export default function LoginPage() {
                 setAuthenticating(false);
                 return;
             }
-            // registration flow for new users
-            if ((isNewUser || shouldRegisterPasskeyAfterOtp || (!hasRegisteredPasskey && canUseWebauthn)) && typeof window !== "undefined" && (navigator as any).credentials) {
-                try {
-                    await registerPasskey();
-                } catch (e) {
-                    // パスキー登録に失敗してもOTPログインは成功扱いで継続
-                    console.log("[passkey] registration skipped after login", e);
-                }
-            }
+
             // after everything is done, navigate accordingly
             navigateAfterLogin();
         } catch (e: any) {
@@ -228,7 +171,7 @@ export default function LoginPage() {
         if (timer === 0) sendOtp();
     };
 
-    if (isLoading || authenticating) {
+    if (isLoading || authenticating || !!user) {
         return <Loading />;
     }
 
@@ -262,6 +205,7 @@ export default function LoginPage() {
                                     value={emailDigits}
                                     onChange={(v) => setEmailDigits(v)}
                                     autoFocus
+                                    autoComplete="off"
                                 />
                             </div>
                             <span className="font-bold text-sm">@doshisha-js.ed.jp</span>
@@ -270,7 +214,7 @@ export default function LoginPage() {
                             </p>
                             {hasRegisteredPasskey && canUseWebauthn && (
                                 <p className="text-sm text-zinc-500">
-                                    このアカウントには登録済みパスキーがあります。認証コード送信の前にパスキー認証を優先します。
+                                    このアカウントは生体認証でもログインできます。
                                 </p>
                             )}
                         </div>
@@ -287,6 +231,10 @@ export default function LoginPage() {
                                 onClick={async () => {
                                     setError("");
                                     try {
+                                        if (emailDigits.length !== 6) {
+                                            setError("先に学籍番号（6桁）を入力してください");
+                                            return;
+                                        }
                                         const passkeyResult = await tryPasskeyLogin(emailDigits.length === 6 ? fullEmail : "");
                                         if (passkeyResult === "success") {
                                             navigateAfterLogin();
@@ -313,6 +261,7 @@ export default function LoginPage() {
                             value={otpDigits}
                             onChange={(v) => setOtpDigits(v)}
                             className="justify-center mx-auto"
+                            autoComplete="one-time-code"
                         />
                         <button
                             disabled={otpDigits.length !== 4 || authenticating}
@@ -324,11 +273,6 @@ export default function LoginPage() {
                         <p className="mt-2 text-sm text-zinc-500">
                             メールが届かない場合は迷惑メールフォルダもご確認ください。
                         </p>
-                        {willPromptPasskeyAfterOtp && (
-                            <p className="mt-2 text-sm text-zinc-500">
-                                この端末にパスキーが未登録のため、ログイン後に登録画面が表示されます。
-                            </p>
-                        )}
                         <div className="mt-4 text-sm">
                             {timer > 0 ? (
                                 <span>{timer}秒後に再送信可能</span>

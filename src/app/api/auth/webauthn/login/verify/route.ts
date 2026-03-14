@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import admin from "firebase-admin";
 import { firestore } from "@/lib/firebaseAdmin";
 import { resolveWebauthnRelyingParty } from "@/lib/webauthn-relying-party";
 import {
@@ -34,6 +33,7 @@ export async function POST(request: Request) {
 
   const { id } = assertionResponse;
   let storedCredential: any = null;
+  let ownerEmail: string | null = email || null;
   if (email) {
     const doc = await firestore.collection("users").doc(email).get();
     if (doc.exists) {
@@ -45,7 +45,10 @@ export async function POST(request: Request) {
     snapshot.forEach((d) => {
       const creds = d.data()?.credentials || [];
       const found = creds.find((c: any) => c.id === id);
-      if (found) storedCredential = found;
+      if (found) {
+        storedCredential = found;
+        ownerEmail = d.id;
+      }
     });
   }
 
@@ -72,24 +75,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "verification failed" }, { status: 400 });
   }
 
-  // update counter
-  await firestore.collection("users").doc(email || storedCredential.email).set({
-    credentials: admin.firestore.FieldValue.arrayUnion({
-      ...storedCredential,
-      counter: verification.authenticationInfo.newCounter,
-    }),
-  }, { merge: true });
-
-  let ownerEmail = email;
   if (!ownerEmail) {
-    const snapshot = await firestore.collection("users").get();
-    snapshot.forEach((d) => {
-      const creds = d.data()?.credentials || [];
-      if (creds.find((c: any) => c.id === id)) {
-        ownerEmail = d.id;
-      }
-    });
+    return NextResponse.json({ success: false, error: "owner not found" }, { status: 400 });
   }
+
+  // update counter in-place to avoid duplicate credentials and allow multi-passkey accounts
+  const ownerRef = firestore.collection("users").doc(ownerEmail);
+  const ownerSnap = await ownerRef.get();
+  const ownerData = ownerSnap.data() || {};
+  const currentCreds = Array.isArray(ownerData.credentials) ? ownerData.credentials : [];
+  const updatedCreds = currentCreds.map((c: any) =>
+    c.id === id ? { ...c, counter: verification.authenticationInfo.newCounter } : c
+  );
+  await ownerRef.set({ credentials: updatedCreds }, { merge: true });
 
   return NextResponse.json({ success: true, email: ownerEmail });
 }
