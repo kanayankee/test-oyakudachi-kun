@@ -49,6 +49,7 @@ export default function LoginPage() {
     }, []);
     const [hasRegisteredPasskey, setHasRegisteredPasskey] = useState<boolean>(false);
     const [shouldRegisterPasskeyAfterOtp, setShouldRegisterPasskeyAfterOtp] = useState<boolean>(false);
+    const [willPromptPasskeyAfterOtp, setWillPromptPasskeyAfterOtp] = useState<boolean>(false);
 
     const navigateAfterLogin = () => {
         if (returnTo && !fullEmail.startsWith("d021")) {
@@ -90,6 +91,7 @@ export default function LoginPage() {
             setIsNewUser(!existsJson.exists);
             setHasRegisteredPasskey(!!existsJson.hasPasskey);
             setShouldRegisterPasskeyAfterOtp(false);
+            setWillPromptPasskeyAfterOtp(canUseWebauthn && !existsJson.hasPasskey);
 
             const rt = searchParams.get("returnTo");
             if (rt) setReturnTo(rt);
@@ -160,7 +162,7 @@ export default function LoginPage() {
                 return;
             }
             // registration flow for new users
-            if ((isNewUser || shouldRegisterPasskeyAfterOtp) && typeof window !== "undefined" && (navigator as any).credentials) {
+            if ((isNewUser || shouldRegisterPasskeyAfterOtp || (!hasRegisteredPasskey && canUseWebauthn)) && typeof window !== "undefined" && (navigator as any).credentials) {
                 try {
                     await registerPasskey();
                 } catch (e) {
@@ -275,6 +277,11 @@ export default function LoginPage() {
                         <p className="mt-2 text-sm text-zinc-500">
                             メールが届かない場合は迷惑メールフォルダもご確認ください。
                         </p>
+                        {willPromptPasskeyAfterOtp && (
+                            <p className="mt-2 text-sm text-zinc-500">
+                                ログイン後に、この端末で利用できるパスキー登録画面が表示されます。
+                            </p>
+                        )}
                         <div className="mt-4 text-sm">
                             {timer > 0 ? (
                                 <span>{timer}秒後に再送信可能</span>
