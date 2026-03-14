@@ -27,12 +27,14 @@ export default function Header() {
                             <span className="text-sm font-bold text-zinc-500 hidden sm:inline">
                                 {userId}
                             </span>
-                            <button
-                                onClick={signOut}
-                                className="text-sm font-bold text-red-500 hover:text-red-600 bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-                            >
-                                ログアウト
-                            </button>
+                            {!isD021 && (
+                                <button
+                                    onClick={signOut}
+                                    className="text-sm font-bold text-red-500 hover:text-red-600 bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                                >
+                                    ログアウト
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

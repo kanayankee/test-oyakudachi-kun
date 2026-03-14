@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getAnnouncementsData } from "@/lib/sheets";
 import ClientAnnouncement from "./ClientAnnouncement";
 import ClientHomeRedirect from "./ClientHomeRedirect";
+import GradeLinks from "./GradeLinks";
 
 export default async function Home() {
   const grades = [
@@ -56,22 +57,7 @@ export default async function Home() {
       {/* 過去問リンク Section */}
       <section>
         <h2 className="text-xl font-bold text-foreground mb-4">過去問データベース</h2>
-        <div className="flex flex-col gap-3">
-          {grades.map((grade) => (
-            <Link
-              key={grade.id}
-              href={`/kakomon/${grade.id}`}
-              className="bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 hover:shadow-md transition-all border border-primary-light group"
-            >
-              <div className="w-12 h-12 rounded-full bg-primary-light group-hover:bg-pop-light flex items-center justify-center transition-colors shadow-sm shrink-0">
-                <span className="text-xl font-bold text-primary group-hover:text-amber-600 transition-colors">
-                  {grade.id}
-                </span>
-              </div>
-              <span className="text-lg font-bold text-foreground">{grade.label}</span>
-            </Link>
-          ))}
-        </div>
+        <GradeLinks grades={grades} />
       </section>
 
       {/* リンク Section */}

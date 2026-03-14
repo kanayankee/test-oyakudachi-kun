@@ -2,6 +2,7 @@ import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Link from "next/link";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import "./globals.css";
 
 const genJyuu = localFont({
@@ -62,7 +63,7 @@ export default function RootLayout({
       </head>
       <body className={`${genJyuu.className} antialiased flex flex-col min-h-screen`}>
         <SessionProvider>
-          <React.Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
+          <React.Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-screen"><LoadingSpinner size="small" /></div>}>
             <AuthProvider>
               <div className="flex-1 flex flex-col items-center w-full">
                 <Header />

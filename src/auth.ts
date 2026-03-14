@@ -1,50 +1,109 @@
 import NextAuth from "next-auth";
-import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { verifyOtp } from "@/lib/otp";
+import { firestore } from "@/lib/firebaseAdmin";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     providers: [
-        MicrosoftEntraID({
-            clientId: process.env.AZURE_AD_CLIENT_ID,
-            clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
-            issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
-            authorization: {
-                params: {
-                    prompt: "select_account",
-                },
+        CredentialsProvider({
+            name: "メール認証",
+            credentials: {
+                email: { label: "メールアドレス", type: "text" },
+                otp: { label: "認証コード", type: "text" },
+                // webauthn payloads can also be passed here; the authorize function
+                // inspects the body and decides which authentication method to run.
+                assertionResponse: { label: "webauthnResponse", type: "text" },
+            },
+            async authorize(credentials: any, req) {
+                if (!credentials) return null;
+                const email = String(credentials.email || "");
+                const otp = String(credentials.otp || "");
+                console.log("[auth] authorize", { email, otp, assertion: !!credentials.assertionResponse });
+
+                // passkey login
+                if (credentials.assertionResponse) {
+                    try {
+                        const assertion = JSON.parse(credentials.assertionResponse as string);
+                        const { id } = assertion;
+                        let ownerEmail: string | null = null;
+                        const snapshot = await firestore.collection("users").get();
+                        snapshot.forEach((d) => {
+                            const data = d.data();
+                            const creds = data?.credentials || [];
+                            if (creds.find((c: any) => c.id === id)) {
+                                ownerEmail = d.id;
+                            }
+                        });
+                        if (!ownerEmail) return null;
+                        return { id: ownerEmail, email: ownerEmail };
+                    } catch (e) {
+                        console.error("assertion parse/verify failed", e);
+                        return null;
+                    }
+                }
+
+                // otp login
+                if (!email || !otp) {
+                    console.log("[auth] missing email or otp", email, otp);
+                    return null;
+                }
+
+                try {
+                    const ok = await verifyOtp(email, otp);
+                    console.log("[auth] verifyOtp result", email, otp, ok);
+                    if (!ok) {
+                        return null;
+                    }
+
+                    const userRef = firestore.collection("users").doc(email);
+                    const snap = await userRef.get();
+                    const isNew = !snap.exists;
+                    console.log("[auth] user exists?", email, !isNew);
+                    if (isNew) {
+                        await userRef.set({ email, createdAt: Date.now() });
+                    }
+
+                    return { id: email, email, isNew };
+                } catch (err) {
+                    console.error("[auth] authorize otp flow error", err);
+                    return null;
+                }
             },
         }),
     ],
-    callbacks: {
-        async signIn({ user }) {
-            const email = user.email;
-            if (!email) return false;
-
-            const [prefix, domain] = email.split("@");
-
-            if (domain !== "doshisha-js.ed.jp") {
-                // Different domain: Encourage re-login with school account
-                return "/login?error=domain_mismatch";
+    session: {
+        strategy: "jwt",
+        // make the session last effectively forever (10 years in seconds)
+        // default maxAge is 30 days so we override it here.
+        maxAge: 10 * 365 * 24 * 60 * 60,
+        // updateAge determines how often the session token is updated in the
+        // database, leave it at a day or so. Not critical for our long-lived
+        // sessions but keep sane defaults.
+        updateAge: 24 * 60 * 60,
+    },
+    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    // ensure secret is set or warn early
+    events: {
+        async signIn(message) {
+            if (!process.env.NEXTAUTH_SECRET && !process.env.AUTH_SECRET) {
+                console.warn("[auth] NEXTAUTH_SECRET/AUTH_SECRET is not defined; sessions may be insecure");
             }
-
-            // Student ID format: d + 6 digits (e.g., d240123)
-            const studentIdRegex = /^d\d{6}$/;
-            if (!studentIdRegex.test(prefix)) {
-                // School domain but not a student (Teacher/Staff)
-                return "/login?error=not_a_student";
-            }
-
-            return true;
         },
-        async jwt({ token, account, user }) {
-            if (account) {
-                token.accessToken = account.access_token;
+    },
+    callbacks: {
+        async jwt({ token, user }) {
+            if (user) {
+                // propagate isNew flag into token so session callback can read it
+                (token as any).isNew = (user as any).isNew ?? false;
             }
             return token;
         },
         async session({ session, token }) {
-            // Add userId (email prefix) to session if available
             if (session.user?.email) {
                 (session.user as any).userId = session.user.email.split("@")[0];
+            }
+            if ((token as any).isNew) {
+                (session.user as any).isNew = true;
             }
             return session;
         },

@@ -107,6 +107,7 @@ function TeacherAccordion({
 
 import { useAuth } from "@/components/AuthContext";
 import { useRouter } from "next/navigation";
+import Loading from "@/app/loading";
 
 export default function ClientKakomonView({ rows, testCols, grade }: { rows: any[]; testCols: any[]; grade: string }) {
     const { user, userId, admissionYear, calculatedGrade, isLoading: isAuthLoading } = useAuth();
@@ -127,21 +128,10 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
     const now = new Date();
     const month = now.getMonth() + 1;
     const day = now.getDate();
-    // School year starts in April. 
-    // In March, it's still the previous school year.
+    // bypass window for end-of-year transition (March / early April).
     const isBypassPeriod = (month === 3) || (month === 4 && day <= 20);
-    // Grade based on school year: e.g. Sync d21 as grade 4 in SY2025 (actually 3 but d21=2021)
-    // d21 joined in SY2021. In SY2025, they are 2025 - 2021 + 1 = 5th year... wait.
-    // Doshisha Junior High is 3 years. d21 = 2021 entry.
-    // SY2021: 1st, SY2022: 2nd, SY2023: 3rd. So d21 should have graduated.
-    // The user said d21 is currently 2nd grade. That means d21 entered in 2024? 
-    // Wait, the user said "d021 ... is currently 2nd grade".
-    // 21 in d021 usually refers to the 81st class? No, the project is "for 80th".
-    // Let's use the logic: userGrade = schoolYear - (entryYear + 2000) + 1.
-    // If d21 is 2nd grade in SY2025 (March 2026 is SY2025): 2 = 2025 - entryYear + 1 => entryYear = 2024.
-    // So "21" in d021 for this user's context must map to an entry year.
-    // Re-reading: "d021のユーザー ... 本来は公開期間外". 
-    // Let's use the provided logic: userGrade = (schoolYear - (admissionYear + 2000) + 1).toString()
+    // The student's current grade is calculated upstream in AuthContext
+    // using their admissionYear; we simply consume `calculatedGrade` below.
 
     useEffect(() => {
         if (!isAuthLoading && !user) {
@@ -156,11 +146,7 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
     }, [user, isAuthLoading, router, userId, grade]);
 
     if (isAuthLoading || !user) {
-        return (
-            <div className="flex justify-center items-center min-h-[50vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
+        return <Loading />;
     }
 
     // Access check for d021 (additional safety for render)
@@ -182,7 +168,8 @@ export default function ClientKakomonView({ rows, testCols, grade }: { rows: any
     ));
 
     const handleUploadClick = (subjectAbbr: string, teacherName: string, testId = "", type = "") => {
-        const url = `${gasUrl}?grade=${grade}&subject=${subjectAbbr}&teacher=${encodeURIComponent(teacherName)}&testId=${testId}&type=${type}`;
+        const studentId = userId || "";
+        const url = `${gasUrl}?grade=${grade}&subject=${subjectAbbr}&teacher=${encodeURIComponent(teacherName)}&testId=${testId}&type=${type}&studentId=${encodeURIComponent(studentId)}`;
         setModalUrl(url);
         setIframeLoaded(false);
         setIsModalOpen(true);
