@@ -129,3 +129,32 @@ export async function recordUserInSheets(email: string, uid: string, admissionYe
 
     return { success: true, manualAdmissionYear };
 }
+
+export async function markPasskeyRegistered(email: string) {
+    const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    if (!credentialsJson) throw new Error("Missing credentials");
+    const credentials = JSON.parse(credentialsJson);
+    const auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
+    const sheets = google.sheets({ version: "v4", auth });
+
+    const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: "ユーザー!A:A",
+    });
+    const values = res.data.values || [];
+
+    const rowIndex = values.findIndex((row) => row[0] === email);
+    if (rowIndex === -1) return;
+
+    await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `ユーザー!H${rowIndex + 1}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+            values: [["登録済"]],
+        },
+    });
+}

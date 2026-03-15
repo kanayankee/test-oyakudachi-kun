@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { firestore } from "@/lib/firebaseAdmin";
 import { resolveWebauthnRelyingParty } from "@/lib/webauthn-relying-party";
+import { markPasskeyRegistered } from "@/lib/sheets";
 import {
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
@@ -69,6 +70,12 @@ export async function POST(request: Request) {
       counter: regInfo.counter,
     }),
   }, { merge: true });
+
+  try {
+    await markPasskeyRegistered(email);
+  } catch (e) {
+    console.error("[webauthn/register/verify] markPasskeyRegistered failed:", e);
+  }
 
   return NextResponse.json({ success: true });
 }
