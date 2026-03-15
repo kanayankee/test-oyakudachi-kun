@@ -9,9 +9,14 @@ function isMaintenanceModeEnabled() {
 export function middleware(request: NextRequest) {
     const { nextUrl, headers } = request;
     const host = headers.get('host') || '';
+    const maintenanceModeEnabled = isMaintenanceModeEnabled();
 
     if (PUBLIC_FILE.test(nextUrl.pathname)) {
         return NextResponse.next();
+    }
+
+    if (maintenanceModeEnabled && nextUrl.pathname === '/') {
+        return new NextResponse(null, { status: 404 });
     }
 
     // 1. Redirect all vercel.app traffic to custom domain /home
@@ -19,7 +24,7 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/home', 'https://test-oyakudachi.com'));
     }
 
-    if (isMaintenanceModeEnabled() && nextUrl.pathname !== '/maintenance') {
+    if (maintenanceModeEnabled && nextUrl.pathname !== '/maintenance') {
         return NextResponse.redirect(new URL('/maintenance', request.url));
     }
 
