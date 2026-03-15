@@ -1,12 +1,26 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+const PUBLIC_FILE = /\.[^/]+$/;
+
+function isMaintenanceModeEnabled() {
+    return process.env.MAINTENANCE_MODE === 'true';
+}
+
 export function middleware(request: NextRequest) {
     const { nextUrl, headers } = request;
     const host = headers.get('host') || '';
 
+    if (PUBLIC_FILE.test(nextUrl.pathname)) {
+        return NextResponse.next();
+    }
+
     // 1. Redirect all vercel.app traffic to custom domain /home
     if (host.includes('.vercel.app')) {
         return NextResponse.redirect(new URL('/home', 'https://test-oyakudachi.com'));
+    }
+
+    if (isMaintenanceModeEnabled() && nextUrl.pathname !== '/maintenance') {
+        return NextResponse.redirect(new URL('/maintenance', request.url));
     }
 
     // 2. Localhost Convenience: Redirect / to /home
